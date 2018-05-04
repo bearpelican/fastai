@@ -21,7 +21,7 @@ def bn_relu_conv(ni, nf, ks, stride, init_zero=False):
 def noop(x): return x
 
 class BasicBlock(nn.Module):
-    def __init__(self, ni, nf, stride, drop_p=0.0, scale=0.4):
+    def __init__(self, ni, nf, stride, drop_p=0.0, scale=1):
         super().__init__()
         self.bn = nn.BatchNorm2d(ni)
         self.conv1 = conv_2d(ni, nf, 3, stride)
