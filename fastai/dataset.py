@@ -6,6 +6,7 @@ from .core import *
 from .transforms import *
 from .layer_optimizer import *
 from .dataloader import DataLoader
+import torchvision
 
 def get_cv_idxs(n, cv_idx=0, val_pct=0.2, seed=42):
     """ Get a list of index values for Validation set from a dataset
@@ -169,6 +170,8 @@ class BaseDataset(Dataset):
     def __len__(self): return self.n
 
     def get(self, tfm, x, y):
+        if isinstance(tfm, torchvision.transforms.transforms.Compose):
+            return tfm(x),y
         return (x,y) if tfm is None else tfm(x,y)
 
     @abstractmethod
@@ -232,11 +235,12 @@ def open_image(fn):
             raise OSError('Error handling image at: {}'.format(fn)) from e
 
 class FilesDataset(BaseDataset):
-    def __init__(self, fnames, transform, path):
+    def __init__(self, fnames, transform, path, open_fn=None):
         self.path,self.fnames = path,fnames
+        self.open_fn = open_image if open_fn is None else open_fn
         super().__init__(transform)
     def get_sz(self): return self.transform.sz
-    def get_x(self, i): return open_image(os.path.join(self.path, self.fnames[i]))
+    def get_x(self, i): return self.open_fn(os.path.join(self.path, self.fnames[i]))
     def get_n(self): return len(self.fnames)
 
     def resize_imgs(self, targ, new_path):

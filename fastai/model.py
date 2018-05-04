@@ -44,6 +44,8 @@ class Stepper():
             if self.fp16: self.fp32_params = copy_model_to_fp32(self.m, self.opt)
 
     def step(self, xs, y, epoch):
+        xs = [x.cuda() for x in xs]
+        y = y.cuda()
         xtra = []
         output = self.m(*xs)
         if isinstance(output,tuple): output,*xtra = output
@@ -65,6 +67,8 @@ class Stepper():
         return torch_item(raw_loss.data)
 
     def evaluate(self, xs, y):
+        xs = [x.cuda() for x in xs]
+        y = y.cuda()
         preds = self.m(*xs)
         if isinstance(preds,tuple): preds=preds[0]
         return preds, self.crit(preds, y)
@@ -204,6 +208,8 @@ def validate(stepper, dl, metrics):
     stepper.reset(False)
     with no_grad_context():
         for (*x,y) in iter(dl):
+            x = [i.cuda() for i in x]
+            y = y.cuda()
             preds, l = stepper.evaluate(VV(x), VV(y))
             if isinstance(x,list): batch_cnts.append(len(x[0]))
             else: batch_cnts.append(len(x))
