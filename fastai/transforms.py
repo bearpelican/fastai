@@ -212,6 +212,9 @@ def coords2px(y, x):
     Y[rows, cols] = 1
     return Y
 
+class ProcessStore():
+    def __init__(self):
+        pass
 
 class Transform():
     """ A class that represents a transform.
@@ -226,7 +229,8 @@ class Transform():
     """
     def __init__(self, tfm_y=TfmType.NO):
         self.tfm_y=tfm_y
-        self.store = threading.local()
+#         self.store = threading.local()
+        self.store = ProcessStore()
 
     def set_state(self): pass
     def __call__(self, x, y):

@@ -3,6 +3,7 @@ from torch.utils.data.sampler import SequentialSampler, RandomSampler, BatchSamp
 from .imports import *
 from .core import *
 import collections,sys,traceback,threading
+# import torch.multiprocessing.ProcessPoolExecutor
 
 string_classes = (str, bytes)
 
@@ -24,7 +25,7 @@ def get_tensor(batch, pin, half=False):
 class DataLoader(object):
     def __init__(self, dataset, batch_size=1, shuffle=False, sampler=None, batch_sampler=None, pad_idx=0,
                  num_workers=None, pin_memory=False, drop_last=False, pre_pad=True, half=False,
-                 transpose=False, transpose_y=False, collate_fn=None):
+                 transpose=False, transpose_y=False, collate_fn=None, multiprocess=False):
         self.dataset,self.batch_size,self.num_workers = dataset,batch_size,num_workers
         self.pin_memory,self.drop_last,self.pre_pad = pin_memory,drop_last,pre_pad
         self.transpose,self.transpose_y,self.pad_idx,self.half = transpose,transpose_y,pad_idx,half
@@ -48,6 +49,7 @@ class DataLoader(object):
         self.sampler = sampler
         self.batch_sampler = batch_sampler
         self.collate_fn = self.np_collate if collate_fn is None else collate_fn
+        self.multiprocess = multiprocess
 
     def __len__(self): return len(self.batch_sampler)
 
@@ -73,7 +75,7 @@ class DataLoader(object):
         raise TypeError(("batch must contain numbers, dicts or lists; found {}".format(type(b))))
 
     def get_batch(self, indices):
-        res = self.np_collate([self.dataset[i] for i in indices])
+        res = self.collate_fn([self.dataset[i] for i in indices])
         if self.transpose:   res[0] = res[0].T
         if self.transpose_y: res[1] = res[1].T
         return res
@@ -83,9 +85,15 @@ class DataLoader(object):
             for batch in map(self.get_batch, iter(self.batch_sampler)):
                 yield get_tensor(batch, self.pin_memory, self.half)
         else:
-            with ThreadPoolExecutor(max_workers=self.num_workers) as e:
-                # avoid py3.6 issue where queue is infinite and can result in memory exhaustion
-                for c in chunk_iter(iter(self.batch_sampler), self.num_workers*10):
-                    for batch in e.map(self.get_batch, c):
+            if self.multiprocess:
+                with ProcessPoolExecutor(max_workers=self.num_workers) as e:
+                    # avoid py3.6 issue where queue is infinite and can result in memory exhaustion
+                    for batch in e.map(self.get_batch, iter(self.batch_sampler)): 
                         yield get_tensor(batch, self.pin_memory, self.half)
+            else:
+                with ThreadPoolExecutor(max_workers=self.num_workers) as e:
+                    # avoid py3.6 issue where queue is infinite and can result in memory exhaustion
+                    for c in chunk_iter(iter(self.batch_sampler), self.num_workers*10):
+                        for batch in e.map(self.get_batch, c):
+                            yield get_tensor(batch, self.pin_memory, self.half)
 
