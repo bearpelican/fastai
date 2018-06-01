@@ -223,7 +223,12 @@ def validate(stepper, dl, metrics, seq_first=False):
             preds, l = stepper.evaluate(VV(x), VV(y))
             batch_cnts.append(batch_sz(x, seq_first=seq_first))
             loss.append(to_np(l))
-            res.append([f(preds.data, y) for f in metrics])
+            res_list = []
+            for f in metrics:
+                f_res = f(preds.data, y)
+                if isinstance(f_res, list) or isinstance(f_res, tuple): res_list.extend(f_res)
+                else: res_list.append(f_res)
+            res.append(res_list)
     return [np.average(loss, 0, weights=batch_cnts)] + list(np.average(np.stack(res), 0, weights=batch_cnts))
 
 def get_prediction(x):
