@@ -8,14 +8,19 @@ class FP16(nn.Module):
         super().__init__()
         self.module = batchnorm_to_fp32(module.half())
         
-    def forward(self, input): 
-        return self.module(input.half())
+    def forward(self, input):
+        print(input.is_floating_point())
+        if input.is_floating_point(): input = input.half()
+        return self.module(input)
     
     def load_state_dict(self, *inputs, **kwargs):
         self.module.load_state_dict(*inputs, **kwargs)
 
     def state_dict(self, *inputs, **kwargs):
         return self.module.state_dict(*inputs, **kwargs)
+    
+    def __getitem__(self, idx):
+        return self.module[idx]
 
 def batchnorm_to_fp32(module):
     '''
