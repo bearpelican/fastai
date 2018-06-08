@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 from .core import trainable_params_
+from .torch_imports import *
 
+IS_TORCH_04 = LooseVersion(torch.__version__) >= LooseVersion('0.4')
 
 class FP16(nn.Module):
     def __init__(self, module): 
@@ -9,8 +11,8 @@ class FP16(nn.Module):
         self.module = batchnorm_to_fp32(module.half())
         
     def forward(self, input):
-        print(input.is_floating_point())
-        if input.is_floating_point(): input = input.half()
+        print('is float:', is_float(input))
+        if is_float(input): input = input.half()
         return self.module(input)
     
     def load_state_dict(self, *inputs, **kwargs):
@@ -21,6 +23,11 @@ class FP16(nn.Module):
     
     def __getitem__(self, idx):
         return self.module[idx]
+
+def is_float(tensor):
+    if IS_TORCH_04: return tensor.is_floating_point()
+    if isinstance(tensor, Variable): tensor = tensor.data
+    return isinstance(tensor, torch.cuda.FloatTensor)
 
 def batchnorm_to_fp32(module):
     '''
