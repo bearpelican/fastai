@@ -9,6 +9,9 @@ string_classes = (str, bytes)
 
 
 def get_tensor(batch, pin, half=False):
+#     return batch
+    if isinstance(batch, (torch.LongTensor, torch.FloatTensor)):
+        return batch
     if isinstance(batch, (np.ndarray, np.generic)):
         batch = T(batch, half=half, cuda=False).contiguous()
         if pin: batch = batch.pin_memory()
