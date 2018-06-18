@@ -41,10 +41,10 @@ class LinearDecoder(nn.Module):
         return output, raw_outputs, outputs
 
 
-def get_language_model(n_tok, em_sz, nhid, nlayers, pad_token, decode_train=True, dropouts=None):
+def get_language_model(n_tok, em_sz, nhid, nlayers, pad_token, decode_train=True, dropouts=None, bidir=True):
     if dropouts is None: dropouts = [0.5,0.4,0.5,0.05,0.3]
     rnn_enc = RNN_Encoder(n_tok, em_sz, nhid=nhid, nlayers=nlayers, pad_token=pad_token,
-                 dropouti=dropouts[0], wdrop=dropouts[2], dropoute=dropouts[3], dropouth=dropouts[4])
+                 dropouti=dropouts[0], wdrop=dropouts[2], dropoute=dropouts[3], dropouth=dropouts[4], bidir=bidir)
     rnn_dec = LinearDecoder(n_tok, em_sz, dropouts[1], decode_train=decode_train, tie_encoder=rnn_enc.encoder)
     return SequentialRNN(rnn_enc, rnn_dec)
 
