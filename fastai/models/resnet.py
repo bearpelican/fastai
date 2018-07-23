@@ -203,6 +203,17 @@ class ResNet(nn.Module):
 
     def forward(self, x): return self.features(x)
 
+    
+def resnet50(pretrained=False, **kwargs):
+    """Constructs a ResNet-50 model.
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+    if pretrained:
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+    return model
 
 def bnf_resnet50 (): return ResNet(BottleneckFinal, [3, 4, 6, 3])
 def bnz_resnet50 (): return ResNet(BottleneckZero, [3, 4, 6, 3])
