@@ -45,6 +45,7 @@ class LanguageModelPreLoader(Callback):
         #Getting the indexes of the texts that start and finish the portion i---i+seq_len in the stream 
         start,end = np.argmax(self.text_idx >= i)-1,np.argmin(self.text_idx <= i+seq_len+1)
         start = max(0,start)
+        if end == 0: end = len(self.idxs) # (AS) added this here as sometimes end is 0
         #Grabbing the texts we need in the dataset
         if self.backwards: concat = np.concatenate([self.dataset.x.items[j][::-1] for j in self.idxs[start:end]])
         else: concat = np.concatenate([self.dataset.x.items[j] for j in self.idxs[start:end]])
