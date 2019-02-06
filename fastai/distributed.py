@@ -2,12 +2,9 @@ from .torch_core import *
 from .basic_train import Learner,LearnerCallback
 from torch.nn.parallel import DistributedDataParallel, DataParallel
 from torch.utils.data.distributed import DistributedSampler
+import torch.distributed as dist
 
 __all__ = ['DistributedRecorder', 'DistributedTrainer', 'read_metrics', 'setup_distrib']
-
-def rnn_reset(self):
-    if hasattr(self.module, 'reset'): self.module.reset()
-DistributedDataParallel.reset = rnn_reset
 
 def make_async(b:Tuple[Tensor,Tensor]):
     return [o.to(o.device, non_blocking=True) for o in b]
@@ -17,17 +14,35 @@ class ParallelTrainer(LearnerCallback):
     def on_train_begin(self, **kwargs): self.learn.model = DataParallel(self.learn.model)
     def on_train_end  (self, **kwargs): self.learn.model = self.learn.model.module
 
+class DDP(DistributedDataParallel):
+      # Distributed wrapper. Supports asynchronous evaluation and model saving
+    def forward(self, *args, **kwargs):
+        # DDP has a sync point on forward. No need to do this for eval. This allows us to have different batch sizes
+        if self.training: return super().forward(*args, **kwargs)
+        else:             return self.module(*args, **kwargs)
+
+    def load_state_dict(self, *args, **kwargs):
+        self.module.load_state_dict(*args, **kwargs)
+
+    def state_dict(self, *args, **kwargs):
+        return self.module.state_dict(*args, **kwargs)
+
+    def reset(self):
+        if hasattr(self.module, 'reset'): self.module.reset()
+    
 class DistributedTrainer(LearnerCallback):
-    _order = -20 # Needs to run before the recorder
-    def __init__(self, learn:Learner, cuda_id:int=0):
+    _order = -20 #Needs to run before the recorder
+    def __init__(self, learn:Learner, cuda_id:int=0, drop_last:bool=False, shuffle:bool=True):
         super().__init__(learn)
-        self.cuda_id,self.train_sampler = cuda_id,None
+        self.cuda_id = cuda_id
+        self.train_sampler = None
+        self.drop_last,self.shuffle = drop_last, shuffle
 
     def on_train_begin(self, **kwargs):
-        self.learn.model = DistributedDataParallel(self.learn.model, device_ids=[self.cuda_id],
+        self.learn.model = DDP(self.learn.model, device_ids=[self.cuda_id],
                                                    output_device=self.cuda_id)
-        self.train_sampler = DistributedSampler(self.learn.data.train_dl.dataset)
-        self.learn.data.train_dl = self.learn.data.train_dl.new(shuffle=False, sampler=self.train_sampler)
+        self.train_sampler = LMDistributedSampler(self.learn.data.train_dl.dataset, shuffle=self.shuffle)
+        self.learn.data.train_dl = self.learn.data.train_dl.new(shuffle=False, sampler=self.train_sampler, drop_last=self.drop_last)
         self.learn.data.train_dl.add_tfm(make_async)
         if hasattr(self.learn.data, 'valid_dl') and self.learn.data.valid_dl is not None:
             self.valid_sampler = DistributedSampler(self.learn.data.valid_dl.dataset)
@@ -36,7 +51,8 @@ class DistributedTrainer(LearnerCallback):
         self.rank = rank_distrib()
         self.learn.recorder.silent = (self.rank != 0)
 
-    def on_epoch_begin(self, epoch, **kwargs): self.train_sampler.set_epoch(epoch)
+    def on_epoch_begin(self, epoch, **kwargs): 
+        if hasattr(self.train_sampler, 'set_epoch'): self.train_sampler.set_epoch(epoch)
 
     def on_train_end(self, **kwargs):
         self.learn.model = self.learn.model.module
@@ -61,14 +77,18 @@ class DistributedRecorder(LearnerCallback):
         stats = np.array([[v] + m for v,m in zip(recorder.val_losses,recorder.metrics)])
         np.save(cache_path/f'metrics_{self.cuda_id}', stats)
 
+<<<<<<< HEAD
 def _learner_parallel(learn:Learner):
     "Use nn.DataParallel when training and remove when done"
     learn.callbacks.append(ParallelTrainer(learn))
     return learn
 
 def _learner_distributed(learn:Learner, cuda_id:int, cache_dir:PathOrStr='tmp'):
+=======
+def _learner_distributed(learn:Learner, cuda_id:int, cache_dir:PathOrStr='tmp', drop_last=False, shuffle=True):
+>>>>>>> fp16 loss scaler and distributed additions for LM
     "Put `learn` on distributed training with `cuda_id`."
-    learn.callbacks.append(DistributedTrainer(learn, cuda_id))
+    learn.callbacks.append(DistributedTrainer(learn, cuda_id, drop_last, shuffle))
     learn.callbacks.append(DistributedRecorder(learn, cuda_id, cache_dir))
     return learn
 
@@ -93,3 +113,46 @@ def setup_distrib(gpu:Any=None):
         torch.distributed.init_process_group(backend='nccl', init_method='env://')
     return gpu
 
+
+class LMDistributedSampler(Sampler):
+    def __init__(self, dataset, num_replicas=None, rank=None, shuffle=True):
+        if num_replicas is None:
+            if not dist.is_available():
+                raise RuntimeError("Requires distributed package to be available")
+            num_replicas = dist.get_world_size()
+        if rank is None:
+            if not dist.is_available():
+                raise RuntimeError("Requires distributed package to be available")
+            rank = dist.get_rank()
+        self.dataset = dataset
+        self.num_replicas = num_replicas
+        self.rank = rank
+        self.epoch = 0
+        self.shuffle = shuffle
+        self.num_samples = int(math.ceil(len(self.dataset) * 1.0 / self.num_replicas))
+        self.total_size = self.num_samples * self.num_replicas
+
+    def __iter__(self):
+        # deterministically shuffle based on epoch
+        if self.shuffle:
+            g = torch.Generator()
+            g.manual_seed(self.epoch)
+            indices = torch.randperm(len(self.dataset), generator=g).tolist()
+        else:
+            np.random.seed(self.epoch)
+            indices = torch.arange(len(self.dataset)).tolist()
+        # add extra samples to make it evenly divisible
+        indices += indices[:(self.total_size - len(indices))]
+        assert len(indices) == self.total_size
+
+        # subsample
+        indices = indices[self.rank*self.num_samples:(self.rank+1)*self.num_samples]
+        assert len(indices) == self.num_samples
+
+        return iter(indices)
+
+    def __len__(self):
+        return self.num_samples
+
+    def set_epoch(self, epoch):
+        self.epoch = epoch

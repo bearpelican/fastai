@@ -90,7 +90,7 @@ class RNNLearner(Learner):
             reverse_sampler = np.argsort(sampler)
             preds = [p[reverse_sampler] for p in preds] 
         return(preds)
-
+    
 def decode_spec_tokens(tokens):
     new_toks,rule,arg = [],None,None
     for t in tokens:
@@ -120,7 +120,7 @@ class LanguageLearner(RNNLearner):
         self.model.reset()
         xb,yb = self.data.one_item(text)
         new_idx = []
-        for _ in range(n_words): #progress_bar(range(n_words), leave=False):
+        for _ in progress_bar(range(n_words), leave=False):
             res = self.pred_batch(batch=(xb,yb))[0][-1]
             #if len(new_idx) == 0: self.model[0].select_hidden([0])
             if no_unk: res[self.data.vocab.stoi[UNK]] = 0.
@@ -133,6 +133,20 @@ class LanguageLearner(RNNLearner):
             new_idx.append(idx)
             xb = xb.new_tensor([idx])[None]
         return text + sep + sep.join(decoder(self.data.vocab.textify(new_idx, sep=None)))
+
+    def predict_old(self, text:str, n_words:int=1, no_unk:bool=True, temperature:float=1., min_p:float=None):
+        "Return the `n_words` that come after `text`."
+        ds = self.data.single_dl.dataset
+        for _ in progress_bar(range(n_words), leave=False):
+            self.model.reset()
+            xb, yb = self.data.one_item(text)
+            res = self.pred_batch(batch=(xb,yb))[0][-1]
+            if no_unk: res[self.data.vocab.stoi[UNK]] = 0.
+            if min_p is not None: res[res < min_p] = 0.
+            if temperature != 1.: res.pow_(1 / temperature)
+            idx = torch.multinomial(res, 1).item()
+            text += f' {self.data.vocab.itos[idx]}'
+        return text
 
     def beam_search(self, text:str, n_words:int, no_unk:bool=True, top_k:int=10, beam_sz:int=1000, temperature:float=1.,
                     sep:str=' ', decoder=decode_spec_tokens):
