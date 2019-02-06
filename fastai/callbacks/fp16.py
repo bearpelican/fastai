@@ -121,6 +121,7 @@ class MixedPrecision(LearnerCallback):
         self.loss_scale,self.flat_master = loss_scale,flat_master
         self.loss_scaler = DynamicLossScaler()
         self.not_min += ['model_params', 'master_params']
+        print('Mixed precision')
         assert torch.backends.cudnn.enabled, "Mixed precision training requires cudnn."
 
     def on_train_begin(self, **kwargs:Any)->None:
@@ -149,15 +150,20 @@ class MixedPrecision(LearnerCallback):
         #To avoid gradient underflow, we scale the gradients
         ret_loss = last_loss * self.loss_scaler.loss_scale
         if torch.isnan(ret_loss): 
-            warn(f"You have a `loss_scale` factor that is too high, try to divide it by 2 (current value: {self.loss_scale}).")
+            print(f"You have a `loss_scale` factor that is too high, try to divide it by 2 (current value: {self.loss_scaler.loss_scale}).")
         return ret_loss
 
     def on_backward_end(self, **kwargs:Any ):
         "Convert the gradients back to FP32 and divide them by the scale."
-        has_overflow = DynamicLossScaler.has_overflow(self.model_params)
+        params = []
+        for group in self.model_params:
+            for param in group:
+                params.append(param)
+        has_overflow = self.loss_scaler.has_overflow(params)
         if has_overflow:
-            print('fp16 overflow. skipping batch')
+            print(f'fp16 overflow. skipping batch. Scale: {self.loss_scaler.loss_scale}')
             self.learn.model.zero_grad()
+            self.learn.opt.zero_grad()
         else:
             model_g2master_g(self.model_params, self.master_params, self.flat_master)
             for group in self.master_params:
