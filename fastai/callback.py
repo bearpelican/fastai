@@ -238,7 +238,7 @@ class CallbackHandler():
 
     def on_backward_begin(self, loss:Tensor)->None:
         "Handle gradient calculation on `loss`."
-        self.smoothener.add_value(loss.detach().cpu())
+        self.smoothener.add_value(loss.detach().float().cpu())
         self.state_dict['last_loss'], self.state_dict['smooth_loss'] = loss, self.smoothener.smooth
         for cb in self.callbacks:
             a = cb.on_backward_begin(**self.state_dict)
