@@ -55,7 +55,7 @@ def master2model(model_params:Sequence[Tensor], master_params:Sequence[Tensor], 
 
 
 class DynamicLossScaler:
-    def __init__(self, init_scale=2**32, scale_factor=2., scale_window=1000):
+    def __init__(self, init_scale=2**10, scale_factor=2., scale_window=1000):
         self.cur_scale = init_scale
         self.cur_iter = 0
         self.last_overflow_iter = -1

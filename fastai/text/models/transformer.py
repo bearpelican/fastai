@@ -203,7 +203,7 @@ class TransformerXL(nn.Module):
     def forward(self, x):
         bs,x_len = x.size()
         inp = self.drop_emb(self.embedding(x)) #.mul_(self.d_model ** 0.5)
-        m_len = self.hidden[0].size(1) if hasattr(self, 'hidden') and len(self.hidden[0].size()) > 1 else 0
+        m_len = self.hidden[0].size(1) if hasattr(self, 'hidden') and len(self.hidden[0].size()) > 1 and self.mem_len > 0 else 0
         seq_len = m_len + x_len
         mask = torch.triu(x.new_ones(x_len, seq_len), diagonal=1+m_len).byte()[None,None]
         #[None,:,:None] for einsum implementation of attention
