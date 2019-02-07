@@ -149,8 +149,8 @@ class MixedPrecision(LearnerCallback):
         "Scale gradients up by `self.loss_scale` to prevent underflow."
         #To avoid gradient underflow, we scale the gradients
         ret_loss = last_loss * self.loss_scaler.loss_scale
-        if torch.isnan(ret_loss): 
-            print(f"You have a `loss_scale` factor that is too high, try to divide it by 2 (current value: {self.loss_scaler.loss_scale}).")
+#        if torch.isnan(ret_loss): 
+#            print(f"You have a `loss_scale` factor that is too high, try to divide it by 2 (current value: {self.loss_scaler.loss_scale}).")
         return ret_loss
 
     def on_backward_end(self, **kwargs:Any ):
