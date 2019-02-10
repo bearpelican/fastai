@@ -77,16 +77,12 @@ class DistributedRecorder(LearnerCallback):
         stats = np.array([[v] + m for v,m in zip(recorder.val_losses,recorder.metrics)])
         np.save(cache_path/f'metrics_{self.cuda_id}', stats)
 
-<<<<<<< HEAD
 def _learner_parallel(learn:Learner):
     "Use nn.DataParallel when training and remove when done"
     learn.callbacks.append(ParallelTrainer(learn))
     return learn
 
-def _learner_distributed(learn:Learner, cuda_id:int, cache_dir:PathOrStr='tmp'):
-=======
 def _learner_distributed(learn:Learner, cuda_id:int, cache_dir:PathOrStr='tmp', drop_last=False, shuffle=True):
->>>>>>> fp16 loss scaler and distributed additions for LM
     "Put `learn` on distributed training with `cuda_id`."
     learn.callbacks.append(DistributedTrainer(learn, cuda_id, drop_last, shuffle))
     learn.callbacks.append(DistributedRecorder(learn, cuda_id, cache_dir))
