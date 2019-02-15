@@ -1,16 +1,20 @@
 import inspect
 from IPython.core.display import display, Markdown, HTML
 
-from .nbtest import _submodule_name, get_tests_dir
-from .nbdoc import fn_name
-from .core import *
+from .nbtest import _submodule_name, get_tests_dir, separate_comp, get_qualname
+from .nbdoc import fn_name, get_module_name
+from ..imports.core import *
+from .core import ifnone
 
-__all__ = ['show_skeleton_test', 'create_skeleton_test', 'save_test', 'test_filename']
+__all__ = ['show_skeleton_test', 'show_md_code', 'create_skeleton_test', 'save_test', 'test_filename']
 
 def show_skeleton_test(elt):
     "Display skeleton test in notebook"
     content = create_skeleton_test(elt)
-    display(Markdown(f'```python\n{content}\n```'))
+    show_md_code(content)
+
+def show_md_code(md):
+    display(Markdown(f'```python\n{md}\n```'))
 
 def create_skeleton_test(elt)->str:
     "Create markdown string for skeleton test"
@@ -43,7 +47,7 @@ def create_skeleton_body(elt)->List[str]:
         lines.append(f'result = instance.{name_parts[-1]}({params})')
     else:
         lines.append(f'result{return_type} = {elt.__qualname__}({params})')
-    lines.append(f'assert result == None, "{elt.__name__} should..."')
+    lines.append(f'assert result == None, f"Failed: {elt.__name__} return unexpected result:'+' {result}"')
     return lines
 
 def stringify_required_args(elt)->str:
@@ -68,15 +72,18 @@ def is_instance_method(elt)->bool:
 def create_test_name(elt)->str:
     "Generates default test function name for fastai `elt`"
     if inspect.isclass(elt): raise Exception('Generic class tests are not recommended. Please test class functions/methods individually')
-    name = elt.__qualname__ if hasattr(elt, '__qualname__') else fn_name(elt)
-    test_name = name.replace('.', '_')
+    top,name = separate_comp(get_qualname(elt))
+    test_name = '_'.join(top+[name])
     return f'test_{test_name}'
 
 def skeleton_headers(elt)->str:
     "Returns module imports for new test file"
-    module_name = nbdoc.get_module_name(elt)
+    module_name = get_module_name(elt)
+    parts = module_name.split('.')
+    path,name = '.'.join(parts[:-1]), parts[-1]
     contents = (f'import pytest\n'
-                f'from {module_name} import *\n')
+                f'from {module_name} import *\n'
+                f'from {path} import {name}\n')
     return contents
 
 def save_test(elt, test_function):
@@ -90,7 +97,7 @@ def save_test(elt, test_function):
         print('Could not find test file. Creating new one:', testfile)
         file_contents = skeleton_headers(elt)
     if test_function.__name__ in file_contents:
-        print(f'Test collision: test already exists with {test_function.__name__}. Please rename')
+        print(f'Test collision: test already exists with {test_function.__name__}. Please rename or remove old one')
         return testfile
     source_code = inspect.getsource(test_function)
     file_contents = f'{file_contents}\n{source_code}'
