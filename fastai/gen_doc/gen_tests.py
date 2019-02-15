@@ -93,7 +93,7 @@ def save_test(elt, test_function):
         print(f'Test collision: test already exists with {test_function.__name__}. Please rename')
         return testfile
     source_code = inspect.getsource(test_function)
-    file_contents = f'{file_contents}\n\n{source_code}'
+    file_contents = f'{file_contents}\n{source_code}'
     with open(testfile, 'w') as f:
         f.write(file_contents)
     return testfile

@@ -94,6 +94,7 @@ sidebar_d = {
         'Instructions': '/gen_doc_main',
         'gen_doc': '/gen_doc',
         'gen_doc.gen_notebooks': '/gen_doc.gen_notebooks',
+        'gen_doc.gen_tests': '/gen_doc.gen_tests',
         'gen_doc.nbdoc': '/gen_doc.nbdoc',
         'gen_doc.nbtest': '/gen_doc.nbtest',
         'gen_doc.convert2html': '/gen_doc.convert2html',

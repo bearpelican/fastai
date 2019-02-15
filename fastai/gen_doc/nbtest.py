@@ -23,7 +23,7 @@ TestFunctionMatch = namedtuple('TestFunctionMatch', ['line_number', 'line'])
 def show_test(elt, search=True, markdown:bool=True)->str:
     "Show associated tests for a fastai function/class"
     fn_name = nbdoc.fn_name(elt)
-    md = f'Tests found for `{fn_name}`:'
+    md = ''
 
     db_matches = [get_links(t) for t in lookup_db(elt)]
     md += tests2markdown(ifnone(db_matches, []), 'This tests')
@@ -39,7 +39,10 @@ def show_test(elt, search=True, markdown:bool=True)->str:
             md += tests2markdown(related, 'Related tests')
         except OSError as e: 
             print('Could not find fastai/tests folder. If you installed from conda, please install developer build instead.')
-            
+
+    if len(md)==0: md = f'No tests found for `{fn_name}`'
+    else: md = f'Tests found for `{fn_name}`:' + md
+
     if markdown: display(Markdown(md))
     else: return md
 

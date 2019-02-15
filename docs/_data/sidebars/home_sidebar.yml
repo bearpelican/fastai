@@ -216,6 +216,9 @@ entries:
       title: gen_doc.gen_notebooks
       url: /gen_doc.gen_notebooks.html
     - output: web,pdf
+      title: gen_doc.gen_tests
+      url: /gen_doc.gen_tests.html
+    - output: web,pdf
       title: gen_doc.nbdoc
       url: /gen_doc.nbdoc.html
     - output: web,pdf
