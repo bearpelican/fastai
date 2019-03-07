@@ -95,8 +95,13 @@ def create_module_page(mod, dest_path, force=False):
     nb = get_empty_notebook()
     mod_name = mod.__name__
     strip_name = strip_fastai(mod_name)
-    init_cell = [get_md_cell(f'## Title for {strip_name} (use plain english, not module name!)'), get_md_cell('Type an introduction of the package here.')]
-    cells = [get_code_cell(f'from fastai.gen_doc.nbdoc import *\nfrom {mod_name} import * ', True)]
+    init_cell = [
+        get_code_cell(f'from fastai.gen_doc.nbdoc import * # this code cell is hidden', True),
+        get_md_cell(f'## Replace with title for `{strip_name}` (use plain english, not module name!)'), 
+        get_md_cell('Type an introduction of the package here.'),
+        get_md_cell(f'*To use this module:*'),
+        get_code_cell(f'from {mode_name} import *')
+    ]
 
     gvar_map = get_global_vars(mod)
     if gvar_map: cells.append(get_md_cell('### Global Variable Definitions:'))
