@@ -16,6 +16,22 @@ class ParallelTrainer(LearnerCallback):
     def on_train_begin(self, **kwargs): self.learn.model = DataParallel(self.learn.model)
     def on_train_end  (self, **kwargs): self.learn.model = self.learn.model.module
 
+class DDP(DistributedDataParallel):
+      # Distributed wrapper. Supports asynchronous evaluation and model saving
+    def forward(self, *args, **kwargs):
+        # DDP has a sync point on forward. No need to do this for eval. This allows us to have different batch sizes
+        if self.training: return super().forward(*args, **kwargs)
+        else:             return self.module(*args, **kwargs)
+
+    def load_state_dict(self, *args, **kwargs):
+        self.module.load_state_dict(*args, **kwargs)
+
+    def state_dict(self, *args, **kwargs):
+        return self.module.state_dict(*args, **kwargs)
+
+    def reset(self):
+        if hasattr(self.module, 'reset'): self.module.reset()
+    
 class DistributedTrainer(LearnerCallback):
     _order = -20 # Needs to run before the recorder
     def __init__(self, learn:Learner, cuda_id:int=0):
@@ -29,7 +45,7 @@ class DistributedTrainer(LearnerCallback):
         return old_dl,new_dl,sampler
 
     def on_train_begin(self, **kwargs):
-        self.learn.model = DistributedDataParallel(self.model, device_ids=[self.cuda_id], output_device=self.cuda_id)
+        self.learn.model = DDP(self.model, device_ids=[self.cuda_id], output_device=self.cuda_id)
         shuffle = self.data.train_dl.init_kwargs['shuffle'] if hasattr(self.data.train_dl, 'init_kwargs') else True
         self.old_train_dl,self.data.train_dl,self.train_sampler = self._change_dl(self.data.train_dl, shuffle)
         if hasattr(self.data, 'valid_dl') and self.data.valid_dl is not None:
