@@ -176,7 +176,7 @@ class TransformerXL(Module):
     def __init__(self, vocab_sz:int, ctx_len:int, n_layers:int, n_heads:int, d_model:int, d_head:int, d_inner:int,
                  resid_p:float=0., attn_p:float=0., ff_p:float=0., embed_p:float=0., bias:bool=False, scale:bool=True,
                  act:Activation=Activation.ReLU, double_drop:bool=True, attn_cls:Callable=MultiHeadRelativeAttention,
-                 learned_pos_enc:bool=False, mask:bool=True, mem_len:int=0):
+                 learned_pos_enc:bool=False, mask:bool=True, mem_len:int=0, **kwargs):
         self.encoder = nn.Embedding(vocab_sz, d_model)
         self.pos_enc = nn.Embedding(ctx_len, d_model) if learned_pos_enc else PositionalEncoding(d_model)
         self.drop_emb = nn.Dropout(embed_p)
