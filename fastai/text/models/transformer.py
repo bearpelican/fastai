@@ -1,6 +1,7 @@
 from ...torch_core import *
 from ...layers import *
 from .awd_lstm import RNNDropout, LinearDecoder, SequentialRNN
+from apex.normalization.fused_layer_norm import FusedLayerNorm
 
 __all__ = ['Activation', 'PositionalEncoding', 'GeLU', 'Swish', 'feed_forward', 'MultiHeadAttention', 'MultiHeadRelativeAttention',
            'DecoderLayer', 'Transformer', 'TransformerXL', 'tfmer_lm_config', 'tfmer_clas_config', 'tfmer_lm_split', 'tfmer_clas_split',
@@ -28,7 +29,7 @@ _activ_func = {Activation.ReLU:nn.ReLU(inplace=True), Activation.GeLU:GeLU(), Ac
 def feed_forward(d_model:int, d_ff:int, ff_p:float=0., act:Activation=Activation.ReLU, double_drop:bool=True):
     layers = [nn.Linear(d_model, d_ff), _activ_func[act]]
     if double_drop: layers.append(nn.Dropout(ff_p))
-    return SequentialEx(*layers, nn.Linear(d_ff, d_model), nn.Dropout(ff_p), MergeLayer(), nn.LayerNorm(d_model))
+    return SequentialEx(*layers, nn.Linear(d_ff, d_model), nn.Dropout(ff_p), MergeLayer(), FusedLayerNorm(d_model))
 
 class MultiHeadAttention(Module):
     "MutiHeadAttention."
@@ -39,8 +40,8 @@ class MultiHeadAttention(Module):
         self.attention = nn.Linear(d_model, 3 * n_heads * d_head, bias=bias)
         self.out = nn.Linear(n_heads * d_head, d_model, bias=bias)
         self.drop_att,self.drop_res = nn.Dropout(attn_p),nn.Dropout(resid_p)
-        self.ln = nn.LayerNorm(d_model)
-
+        self.ln = FusedLayerNorm(d_model)
+        
     def forward(self, x:Tensor, mask:Tensor=None, **kwargs):
         return self.ln(x + self.drop_res(self.out(self._apply_attention(x, mask=mask, **kwargs))))
 
