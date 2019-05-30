@@ -4,6 +4,9 @@ from .core import *
 from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel
 
+from apex.normalization.fused_layer_norm import FusedLayerNorm
+from apex.optimizers import FusedAdam
+
 AffineMatrix = Tensor
 BoolOrTensor = Union[bool,Tensor]
 FloatOrTensor = Union[float,Tensor]
@@ -62,9 +65,10 @@ fastai_types = {
 bn_types = (nn.BatchNorm1d, nn.BatchNorm2d, nn.BatchNorm3d)
 bias_types = (nn.Linear, nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.ConvTranspose1d, nn.ConvTranspose2d, nn.ConvTranspose3d)
 def is_pool_type(l:Callable): return re.search(r'Pool[123]d$', l.__class__.__name__)
-no_wd_types = bn_types + (nn.LayerNorm,)
+no_wd_types = bn_types + (nn.LayerNorm,FusedLayerNorm)
 defaults.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-AdamW = partial(optim.Adam, betas=(0.9,0.99))
+# AdamW = partial(optim.Adam, betas=(0.9,0.99))
+AdamW = partial(FusedAdam, betas=(0.9,0.99))
 
 #Monkey-patch `torch.cuda.set_device` so that it updates `defaults.device`
 _old_torch_cuda_set_device = torch.cuda.set_device
