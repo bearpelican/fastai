@@ -68,7 +68,7 @@ def is_pool_type(l:Callable): return re.search(r'Pool[123]d$', l.__class__.__nam
 no_wd_types = bn_types + (nn.LayerNorm,FusedLayerNorm)
 defaults.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 # AdamW = partial(optim.Adam, betas=(0.9,0.99))
-AdamW = partial(FusedAdam, betas=(0.9,0.99), eps=1e-6)
+AdamW = partial(FusedAdam, betas=(0.9,0.99), eps=1e-5)
 
 #Monkey-patch `torch.cuda.set_device` so that it updates `defaults.device`
 _old_torch_cuda_set_device = torch.cuda.set_device
