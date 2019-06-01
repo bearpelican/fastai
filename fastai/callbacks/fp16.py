@@ -100,7 +100,9 @@ class MixedPrecision(LearnerCallback):
         if self.dynamic and grad_overflow(self.model_params) and self.loss_scale > 1:
             self.loss_scale /= 2
             self.noskip = 0
+            print('Gradient overflow:', self.loss_scale)
             #The step will be skipped since we don't update the master grads so they are all None or zero
+            return { 'skip_step': True }
         else:
             model_g2master_g(self.model_params, self.master_params, self.flat_master)
             for group in self.master_params:
@@ -113,6 +115,7 @@ class MixedPrecision(LearnerCallback):
             if self.noskip >= self.max_noskip and self.loss_scale < self.max_scale:
                 self.loss_scale *= 2
                 self.noskip = 0
+                print('Doubling loss scale:', self.loss_scale)
 
     def on_step_end(self, **kwargs:Any)->None:
         "Update the params from master to model and zero grad."
