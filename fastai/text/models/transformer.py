@@ -79,7 +79,7 @@ class MultiHeadAttention(Module):
 #    if mask: x_shift.mul_(torch.tril(x.new_ones(n,p), p-n)[None,:,:,None])
 #    return x_shift
 
-def _line_shift(x:Tensor, mask:bool=False):
+def _line_shift(x:Tensor, mask:bool=True):
     "Shift the line i of `x` by p-i elements to the left, is `mask` puts 0s on the diagonal."
     bs,nh,n,p = x.size()
     x_pad = torch.cat([x.new_zeros(bs,nh,n,1), x], dim=3)
