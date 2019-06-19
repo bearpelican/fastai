@@ -340,8 +340,9 @@ class AverageMetric(Callback):
     def on_batch_end(self, last_output, last_target, **kwargs):
         "Update metric computation with `last_output` and `last_target`."
         if not is_listy(last_target): last_target=[last_target]
-        self.count += first_el(last_target).size(0)
         val = self.func(last_output, *last_target)
+        if val is None: return
+        self.count += first_el(last_target).size(0)
         if self.world:
             val = val.clone()
             dist.all_reduce(val, op=dist.ReduceOp.SUM)
