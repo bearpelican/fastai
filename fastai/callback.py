@@ -351,6 +351,7 @@ class AverageMetric(Callback):
 
     def on_epoch_end(self, last_metrics, **kwargs):
         "Set the final result in `last_metrics`."
+        if self.count == 0: return
         return add_metrics(last_metrics, self.val/self.count)
 
 def annealing_no(start:Number, end:Number, pct:float)->Number:
