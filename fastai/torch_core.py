@@ -115,11 +115,11 @@ def to_cpu(b:ItemsList):
 
 def to_half(b:Collection[Tensor])->Collection[Tensor]:
     "Recursively map lists of tensors in `b ` to FP16."
-    return recurse(lambda x: x.half() if x.dtype not in [torch.int64, torch.int32, torch.int16] else x, b)
+    return recurse(lambda x: x.half() if x is not None and x.dtype not in [torch.int64, torch.int32, torch.int16] else x, b)
 
 def to_float(b:Collection[Tensor])->Collection[Tensor]:
     "Recursively map lists of tensors in `b ` to FP16."
-    return recurse(lambda x: x.float() if x.dtype not in [torch.int64, torch.int32, torch.int16] else x, b)
+    return recurse(lambda x: x.float() if x is not None and x.dtype not in [torch.int64, torch.int32, torch.int16] else x, b)
 
 def to_device(b:Tensors, device:torch.device):
     "Recursively put `b` on `device`."
