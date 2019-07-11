@@ -1,7 +1,11 @@
 from ...torch_core import *
 from ...layers import *
 from .awd_lstm import RNNDropout, LinearDecoder, SequentialRNN
-from apex.normalization.fused_layer_norm import FusedLayerNorm
+
+try:
+    from apex.normalization.fused_layer_norm import FusedLayerNorm
+except:
+    from torch.nn import LayerNorm as FusedLayerNorm
 
 __all__ = ['Activation', 'PositionalEncoding', 'GeLU', 'Swish', 'feed_forward', 'MultiHeadAttention', 'MultiHeadRelativeAttention',
            'DecoderLayer', 'Transformer', 'TransformerXL', 'tfmer_lm_config', 'tfmer_clas_config', 'tfmer_lm_split', 'tfmer_clas_split',

@@ -4,8 +4,14 @@ from .core import *
 from collections import OrderedDict
 from torch.nn.parallel import DistributedDataParallel
 
-from apex.normalization.fused_layer_norm import FusedLayerNorm
-from apex.optimizers import FusedAdam
+
+try:
+    from apex.normalization.fused_layer_norm import FusedLayerNorm
+    from apex.optimizers import FusedAdam
+except:
+    from torch.nn import LayerNorm as FusedLayerNorm
+    from torch.optim import Adam as FusedAdam
+    
 
 AffineMatrix = Tensor
 BoolOrTensor = Union[bool,Tensor]
